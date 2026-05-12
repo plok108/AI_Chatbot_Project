@@ -1,3 +1,4 @@
+// src/components/ChatWindow.jsx
 import React, { useState } from 'react';
 
 function ChatWindow() {
