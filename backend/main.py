@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
 from app.routers import chat, ingredients
+from app.routers.auth import router as auth_router
 
 app = FastAPI(
     title="Smart Meal Chatbot API",
@@ -38,3 +39,4 @@ def health():
 
 app.include_router(chat.router, prefix="/api/chat")
 app.include_router(ingredients.router, prefix="/api/ingredients")
+app.include_router(auth_router, prefix="/api/auth")

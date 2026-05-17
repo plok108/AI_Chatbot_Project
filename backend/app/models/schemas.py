@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class RecommendRequest(BaseModel):
@@ -13,3 +13,20 @@ class RecommendRequest(BaseModel):
 class RecommendResponse(BaseModel):
     id: Optional[int] = None
     recommendation: str
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+    nickname: str = Field(min_length=2, max_length=30)
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: EmailStr
+    nickname: str
