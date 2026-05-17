@@ -50,20 +50,24 @@
   }
 }
 
+/* 🌟 html과 body의 높이를 브라우저에 꽉 맞게 설정합니다 */
+html,
 body {
   margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* 브라우저 전체 스크롤바 방지 */
 }
 
+/* 🌟 root 컨테이너가 브라우저 전체를 채우도록 수정했습니다 */
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+  width: 100%;         /* 고정 너비 1126px 해제 */
+  height: 100%;        /* 높이 100% 확보 */
+  display: flex;       /* 사이드바와 메인을 가로로 배치하기 위함 */
+  flex-direction: row; 
   box-sizing: border-box;
+  margin: 0;           /* margin: 0 auto 해제 */
 }
 
 h1,
@@ -82,6 +86,7 @@ h1 {
     margin: 20px 0;
   }
 }
+
 h2 {
   font-size: 24px;
   line-height: 118%;
@@ -91,6 +96,7 @@ h2 {
     font-size: 20px;
   }
 }
+
 p {
   margin: 0;
 }

@@ -6,7 +6,8 @@ function QuickPrompts() {
     { title: '오늘 뭐 먹지?', desc: '상황에 맞는 메뉴 추천', icon: '🍽️' },
     { title: '냉장고 파먹기', desc: '남은 재료로 요리하기', icon: '🧊' },
     { title: '다이어트 식단', desc: '건강하고 가벼운 한 끼', icon: '🥗' },
-    { title: '간편식 / 배달', desc: '빠르고 편한 식사', icon: '🛵' }
+    // 빠른 메뉴 버튼 목록에 새 옵션을 추가합니다.
+    { title: '초간단 10분 컷', desc: '바쁠 때 후딱 만드는 요리', icon: '⚡' }
   ];
 
   return (
@@ -16,7 +17,7 @@ function QuickPrompts() {
       </h3>
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(4, 1fr)', /* 🌟 여기서 1x4 배열로 만듭니다! */
+        gridTemplateColumns: 'repeat(4, 1fr)',
         gap: '12px'
       }}>
         {promptCards.map((card, idx) => (
@@ -30,7 +31,7 @@ function QuickPrompts() {
             flexDirection: 'column',
             transition: 'background-color 0.2s',
             minHeight: '110px',
-            justifyContent: 'space-between' /* 위아래 간격을 균일하게 벌려줍니다 */
+            justifyContent: 'space-between'
           }}
           onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f1f1'}
           onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f9f9f9'}
