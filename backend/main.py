@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import init_db
 from app.routers import chat, ingredients
 from app.routers.auth import router as auth_router
+from app.routers.preferences import router as preferences_router
 
 app = FastAPI(
     title="Smart Meal Chatbot API",
@@ -16,6 +17,8 @@ init_db()
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
 ]
 
 app.add_middleware(
@@ -40,3 +43,4 @@ def health():
 app.include_router(chat.router, prefix="/api/chat")
 app.include_router(ingredients.router, prefix="/api/ingredients")
 app.include_router(auth_router, prefix="/api/auth")
+app.include_router(preferences_router, prefix="/api/preferences")
