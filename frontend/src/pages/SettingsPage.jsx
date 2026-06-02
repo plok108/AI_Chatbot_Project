@@ -1,358 +1,365 @@
 // src/pages/SettingsPage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { API_BASE, authHeaders } from '../api';
 
-function SettingsPage({ user, onLogout, onUpdateUser, onDeleteUser }) {
-  const [nickname, setNickname] = useState(user?.nickname || '');
-  const [password, setPassword] = useState('');
+const PREF_BASE = `${API_BASE}/api/preferences`;
+
+const cardStyle = {
+  backgroundColor: 'var(--bg-card)',
+  border: '1px solid var(--border)',
+  borderRadius: '16px',
+  padding: '24px',
+  marginBottom: '20px',
+  boxShadow: '0 2px 8px var(--shadow-sm)',
+};
+
+const inputStyle = {
+  flex: '1 1 0%', minWidth: '0', width: '100%', height: '44px', margin: '0',
+  border: '1px solid var(--border-input)', outline: 'none', fontSize: '14px',
+  color: 'var(--text-primary)', padding: '0 16px', borderRadius: '10px',
+  backgroundColor: 'var(--bg-input)', boxSizing: 'border-box',
+};
+
+const btnDarkStyle = {
+  flex: 'none', width: 'auto', height: '44px', margin: '0',
+  backgroundColor: 'var(--text-primary)',
+  color: 'var(--bg-card)', border: 'none', borderRadius: '10px', padding: '0 24px',
+  fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap',
+  boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center',
+};
+
+function SettingsPage({
+  userEmail = '',
+  userNickname = '',
+  userId = null,
+  isGuest = false,
+  onLogout,
+  onGoToLogin,
+  dislikedFoods = [],
+  setDislikedFoods,
+  theme = 'light',
+  setTheme,
+}) {
+  const [nickname, setNickname] = useState(userNickname);
+  const [aiStyles, setAiStyles] = useState([]);
+  const [foodInput, setFoodInput] = useState('');
+  const foodInputRef = React.useRef(null);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
-  const [isDeleteMode, setIsDeleteMode] = useState(false);
-  const [theme, setTheme] = useState('light');
-  const [statusMessage, setStatusMessage] = useState('');
-  
-  const [aiStyles, setAiStyles] = useState(['다이어트 중심', '가성비 중심']);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const aiStyleOptions = [
     '간단한 요리 우선',
     '어려운 요리 포함',
     '다이어트 중심',
     '고단백 중심',
-    '가성비 중심'
+    '가성비 중심',
   ];
 
-  useEffect(() => {
-    if (user) {
-      setNickname(user.nickname || '');
-    }
-  }, [user]);
-
   const toggleStyle = (style) => {
-    if (aiStyles.includes(style)) {
-      setAiStyles(aiStyles.filter(s => s !== style));
-    } else {
-      setAiStyles([...aiStyles, style]);
+    setAiStyles(prev =>
+      prev.includes(style) ? prev.filter(s => s !== style) : [...prev, style]
+    );
+  };
+
+  const addDislikedFood = async () => {
+    const food = foodInput.trim();
+    if (!food || dislikedFoods.includes(food)) {
+      setFoodInput('');
+      return;
     }
+    if (userId) {
+      try {
+        await fetch(`${PREF_BASE}/disliked`, {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ food }),
+        });
+      } catch {
+        alert('저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+        return;
+      }
+    }
+    setDislikedFoods(prev => [...prev, food]);
+    setFoodInput('');
+    foodInputRef.current?.focus();
   };
 
-  const saveNickname = () => {
-    if (!user) return;
-    setStatusMessage('닉네임이 저장되었습니다.');
-    onUpdateUser?.({ ...user, nickname: nickname.trim() || user.nickname });
+  const removeDislikedFood = async (food) => {
+    if (userId) {
+      try {
+        await fetch(`${PREF_BASE}/disliked/${encodeURIComponent(food)}`, {
+          method: 'DELETE',
+          headers: authHeaders(),
+        });
+      } catch {
+        alert('삭제에 실패했습니다.');
+        return;
+      }
+    }
+    setDislikedFoods(prev => prev.filter(f => f !== food));
   };
 
-  const savePassword = () => {
-    setStatusMessage('비밀번호 변경 기능은 백엔드 연동이 필요합니다.');
-    setPassword('');
-  };
 
-  const beginDeleteAccount = () => {
-    const confirmed = window.confirm('회원탈퇴를 하시겠습니까?');
-    if (confirmed) {
-      setIsDeleteMode(true);
-      setStatusMessage('회원 탈퇴를 진행하려면 비밀번호를 입력해주세요.');
+  const handleLogout = () => {
+    if (window.confirm('로그아웃 하시겠습니까?')) {
+      onLogout();
     }
   };
 
   const handleDeleteAccount = async () => {
-    if (!user) return;
     if (!deletePassword.trim()) {
-      setStatusMessage('회원 탈퇴를 진행하려면 비밀번호를 입력해 주세요.');
+      alert('비밀번호를 입력해주세요.');
       return;
     }
-
+    setIsDeleting(true);
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/auth/delete', {
+      const res = await fetch(`${API_BASE}/api/auth/delete`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: user.email,
-          password: deletePassword,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail, password: deletePassword }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.detail || '회원 탈퇴에 실패했습니다.');
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.detail || '회원 탈퇴에 실패했습니다. 비밀번호를 확인해주세요.');
+        return;
       }
-
-      setStatusMessage('회원 탈퇴가 완료되었습니다. 로그인 페이지로 이동합니다.');
-      setDeletePassword('');
-      onDeleteUser?.();
-    } catch (error) {
-      setStatusMessage(error.message || '회원 탈퇴 요청에 실패했습니다.');
+      alert('회원 탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.');
+      setShowDeleteModal(false);
+      onLogout();
+    } catch {
+      alert('서버에 연결할 수 없습니다.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
-    <div style={{ 
-      maxWidth: '1000px', 
-      margin: '0 auto', 
-      paddingTop: '20px', 
-      paddingBottom: '40px',
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      boxSizing: 'border-box'
+    <div style={{
+      maxWidth: '1000px', margin: '0 auto', paddingTop: '20px', paddingBottom: '40px',
+      height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box',
     }}>
-      
-      {/* 상단 타이틀 영역 */}
+
+      {/* 상단 타이틀 */}
       <div style={{ marginBottom: '32px', flexShrink: 0 }}>
-        <h2 style={{ fontSize: '24px', color: '#333', margin: 0, fontWeight: 'bold' }}>
-          ⚙️ 설정
-        </h2>
-        <p style={{ color: '#888', fontSize: '13px', margin: '8px 0 0 0' }}>
-          계정 정보를 관리하고 나에게 딱 맞는 AI 셰프를 세팅해 보세요!
+        <h2 style={{ fontSize: '24px', color: 'var(--text-heading)', margin: 0, fontWeight: 'bold' }}>⚙️ 설정</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '8px 0 0 0' }}>
+          {isGuest
+            ? '비회원으로 사용 중입니다. 로그인하시면 모든 기능을 이용할 수 있어요!'
+            : '계정 정보를 관리하고 나에게 딱 맞는 AI 셰프를 세팅해 보세요!'}
         </p>
       </div>
 
-      {/* 설정 리스트 스크롤 영역 */}
       <div style={{ flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
-        
-        {/* 계정 설정 */}
-        <div style={{
-          backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '16px',
-          padding: '24px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-        }}>
-          <h3 style={{ fontSize: '18px', color: '#222', margin: '0 0 20px 0' }}>👤 계정 설정</h3>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* 이메일 (왼쪽 정렬) */}
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ fontSize: '14px', color: '#555', width: '120px', flexShrink: 0 }}>이메일</span>
-              <div style={{ fontSize: '14px', color: '#888' }}>
-                {user?.email || '등록된 이메일이 없습니다.'}
-              </div>
-            </div>
 
-            {/* 닉네임 입력 및 변경 버튼 */}
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ fontSize: '14px', color: '#555', width: '120px', flexShrink: 0 }}>닉네임</span>
-              <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '400px' }}>
-                <input 
-                  type="text" 
-                  value={nickname} 
-                  onChange={(e) => setNickname(e.target.value)}
-                  style={{ 
-                    flex: '1 1 0%',
-                    minWidth: '0',
-                    width: '100%',
-                    height: '44px',
-                    margin: '0',
-                    border: '1px solid #ddd',
-                    outline: 'none',
-                    fontSize: '14px',
-                    color: '#333',
-                    padding: '0 16px',
-                    borderRadius: '10px',
-                    backgroundColor: '#fff',
-                    boxSizing: 'border-box'
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={saveNickname}
-                  style={{ 
-                    flex: 'none',
-                    width: 'auto',
-                    height: '44px',
-                    margin: '0',
-                    backgroundColor: '#333',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '10px',
-                    padding: '0 24px',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    boxSizing: 'border-box',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                  변경
-                </button>
-              </div>
-            </div>
-
-            {/* 비밀번호 입력 및 변경 버튼 */}
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ fontSize: '14px', color: '#555', width: '120px', flexShrink: 0 }}>비밀번호</span>
-              <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '400px' }}>
-                <input 
-                  type="password" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  placeholder="새 비밀번호 입력"
-                  style={{ 
-                    flex: '1 1 0%',
-                    minWidth: '0',
-                    width: '100%',
-                    height: '44px',
-                    margin: '0',
-                    border: '1px solid #ddd',
-                    outline: 'none',
-                    fontSize: '14px',
-                    color: '#333',
-                    padding: '0 16px',
-                    borderRadius: '10px',
-                    backgroundColor: '#fff',
-                    boxSizing: 'border-box'
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={savePassword}
-                  style={{ 
-                    flex: 'none',
-                    width: 'auto',
-                    height: '44px',
-                    margin: '0',
-                    backgroundColor: '#333',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '10px',
-                    padding: '0 24px',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    boxSizing: 'border-box',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                  변경
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {statusMessage && (
-            <div style={{ marginTop: '16px', color: '#4a4a4a', fontSize: '14px', lineHeight: '1.6' }}>
-              {statusMessage}
-            </div>
-          )}
-
-          <div style={{ borderTop: '1px solid #eee', marginTop: '24px', paddingTop: '20px', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+        {/* ── 게스트: 로그인/회원가입 안내 ── */}
+        {isGuest ? (
+          <div style={cardStyle}>
+            <h3 style={{ fontSize: '18px', color: 'var(--text-heading)', margin: '0 0 12px 0' }}>👤 로그인 / 회원가입</h3>
+            <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '0 0 20px 0', lineHeight: '1.7', wordBreak: 'keep-all' }}>
+              로그인하시면 추천 기록과 냉장고 재료가 저장되고,<br />
+              더 정확한 AI 추천을 받을 수 있어요.
+            </p>
             <button
-              type="button"
-              onClick={onLogout}
-              style={{ flex: '1 1 0%', minWidth: '140px', height: '44px', backgroundColor: '#fff', border: '1px solid #ddd', padding: '0 16px', borderRadius: '10px', color: '#555', fontSize: '14px', cursor: 'pointer', boxSizing: 'border-box' }}>
-              로그아웃
-            </button>
-            <button
-              type="button"
-              onClick={beginDeleteAccount}
+              onClick={onGoToLogin}
               style={{
-                flex: '1 1 0%',
-                minWidth: '140px',
-                height: '44px',
-                backgroundColor: '#fff',
-                color: '#ff6b6b',
-                border: '1px solid #ff6b6b',
-                borderRadius: '10px',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                boxSizing: 'border-box'
-              }}>
-              회원 탈퇴
+                width: '100%', maxWidth: '340px', height: '48px',
+                backgroundColor: '#ff6b6b', color: '#fff', border: 'none',
+                borderRadius: '12px', fontSize: '15px', fontWeight: 'bold',
+                cursor: 'pointer', transition: 'background-color 0.2s',
+              }}
+              onMouseOver={e => { e.currentTarget.style.backgroundColor = '#fa5252'; }}
+              onMouseOut={e => { e.currentTarget.style.backgroundColor = '#ff6b6b'; }}
+            >
+              로그인 / 회원가입 하러 가기 →
             </button>
           </div>
 
-          {isDeleteMode && (
-            <div style={{ width: '100%', maxWidth: '420px', display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
-              <input
-                type="password"
-                value={deletePassword}
-                onChange={(e) => setDeletePassword(e.target.value)}
-                placeholder="회원 탈퇴 비밀번호"
-                style={{
-                  flex: '1 1 0%',
-                  minWidth: '0',
-                  height: '44px',
-                  borderRadius: '10px',
-                  border: '1px solid #ddd',
-                  padding: '0 16px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  backgroundColor: '#fff',
-                  boxSizing: 'border-box',
-                }}
-              />
+        ) : (
+          /* ── 로그인 사용자: 계정 설정 ── */
+          <div style={cardStyle}>
+            <h3 style={{ fontSize: '18px', color: 'var(--text-heading)', margin: '0 0 20px 0' }}>👤 계정 설정</h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* 이메일 */}
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={{ fontSize: '14px', color: 'var(--text-secondary)', width: '120px', flexShrink: 0 }}>이메일</span>
+                <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                  {userEmail || '(이메일 정보 없음)'}
+                </span>
+              </div>
+
+              {/* 닉네임 */}
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={{ fontSize: '14px', color: 'var(--text-secondary)', width: '120px', flexShrink: 0 }}>닉네임</span>
+                <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '400px' }}>
+                  <input
+                    type="text"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    style={inputStyle}
+                  />
+                  <button
+                    style={btnDarkStyle}
+                    onClick={() => alert('닉네임 변경 기능은 준비 중입니다.')}
+                  >
+                    변경
+                  </button>
+                </div>
+              </div>
+
+              {/* 비밀번호 */}
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={{ fontSize: '14px', color: 'var(--text-secondary)', width: '120px', flexShrink: 0 }}>비밀번호</span>
+                <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '400px' }}>
+                  <input
+                    type="password"
+                    placeholder="새 비밀번호 입력"
+                    style={inputStyle}
+                    readOnly
+                    onFocus={() => alert('비밀번호 변경 기능은 준비 중입니다.')}
+                  />
+                  <button
+                    style={btnDarkStyle}
+                    onClick={() => alert('비밀번호 변경 기능은 준비 중입니다.')}
+                  >
+                    변경
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 로그아웃 / 회원탈퇴 */}
+            <div style={{ borderTop: '1px solid #eee', marginTop: '24px', paddingTop: '20px', display: 'flex', gap: '16px' }}>
               <button
-                type="button"
-                onClick={handleDeleteAccount}
+                onClick={handleLogout}
                 style={{
-                  flex: 'none',
-                  width: 'auto',
-                  height: '44px',
-                  minWidth: '140px',
-                  margin: '0',
-                  backgroundColor: '#ff6b6b',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '10px',
-                  padding: '0 18px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  boxSizing: 'border-box',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                탈퇴 진행
+                  backgroundColor: 'transparent', border: '1px solid #ddd',
+                  padding: '8px 16px', borderRadius: '8px', color: '#555',
+                  fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s',
+                }}
+                onMouseOver={e => { e.currentTarget.style.backgroundColor = '#f8f9fa'; }}
+                onMouseOut={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+              >
+                로그아웃
+              </button>
+              <button
+                onClick={() => { setDeletePassword(''); setShowDeleteModal(true); }}
+                style={{
+                  backgroundColor: 'transparent', border: 'none', color: '#bbb',
+                  fontSize: '13px', cursor: 'pointer', textDecoration: 'underline',
+                  transition: 'color 0.2s',
+                }}
+                onMouseOver={e => { e.currentTarget.style.color = '#ff4757'; }}
+                onMouseOut={e => { e.currentTarget.style.color = '#bbb'; }}
+              >
+                회원 탈퇴
               </button>
             </div>
-          )}
+          </div>
+        )}
+
+        {/* ── 기피 음식 및 알러지 (게스트/로그인 모두) ── */}
+        <div style={cardStyle}>
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '18px', color: 'var(--text-heading)', margin: '0 0 6px 0' }}>🚫 기피 음식 및 알러지</h3>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>입력하신 재료나 음식은 AI가 추천에서 제외합니다.</p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '400px', marginBottom: '16px' }}>
+            <input
+              ref={foodInputRef}
+              type="text"
+              value={foodInput}
+              onChange={(e) => setFoodInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addDislikedFood()}
+              placeholder="예: 오이, 가지, 견과류"
+              style={{ ...inputStyle, caretColor: '#ff6b6b' }}
+              onFocus={e => e.target.style.borderColor = '#ff6b6b'}
+              onBlur={e => e.target.style.borderColor = '#ddd'}
+            />
+            <button
+              onClick={addDislikedFood}
+              style={{
+                flex: 'none', width: 'auto', height: '44px', margin: '0',
+                backgroundColor: '#ff6b6b', color: '#fff', border: 'none',
+                borderRadius: '10px', padding: '0 24px', fontSize: '14px', fontWeight: 'bold',
+                cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap', boxSizing: 'border-box',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+              onMouseOver={e => e.currentTarget.style.opacity = '0.9'}
+              onMouseOut={e => e.currentTarget.style.opacity = '1'}
+            >
+              추가
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {dislikedFoods.length === 0 && (
+              <span style={{ fontSize: '13px', color: '#bbb' }}>등록된 항목이 없습니다.</span>
+            )}
+            {dislikedFoods.map((food, idx) => (
+              <div key={idx} style={{
+                display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#fff4f4',
+                border: '1px solid #ffe3e3', padding: '6px 12px', borderRadius: '20px',
+                fontSize: '13px', color: '#ff6b6b', fontWeight: '500',
+              }}>
+                {food}
+                <button
+                  onClick={() => removeDislikedFood(food)}
+                  style={{
+                    background: 'none', border: 'none', color: '#ff9999', fontSize: '14px',
+                    cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', width: '16px', height: '16px', borderRadius: '50%',
+                  }}
+                  onMouseOver={e => { e.currentTarget.style.backgroundColor = '#ff6b6b'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseOut={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#ff9999'; }}
+                >×</button>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* 2. 테마 변경 영역 */}
-        <div style={{
-          backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '16px',
-          padding: '24px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-        }}>
-          <h3 style={{ fontSize: '18px', color: '#222', margin: '0 0 20px 0' }}>🎨 테마 변경</h3>
+        {/* ── 테마 변경 (게스트/로그인 모두) ── */}
+        <div style={cardStyle}>
+          <h3 style={{ fontSize: '18px', color: 'var(--text-heading)', margin: '0 0 20px 0' }}>🎨 테마 변경</h3>
           <div style={{ display: 'flex', gap: '16px' }}>
-            <button 
+            <button
               onClick={() => setTheme('light')}
               style={{
-                flex: 1, height: '80px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '15px', fontWeight: 'bold', transition: 'all 0.2s', cursor: 'pointer',
-                backgroundColor: theme === 'light' ? '#fff4f4' : '#f8f9fa',
-                border: theme === 'light' ? '2px solid #ff6b6b' : '1px solid #eee',
-                color: theme === 'light' ? '#ff6b6b' : '#888'
+                flex: 1, height: '80px', borderRadius: '12px', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '8px', fontSize: '15px', fontWeight: 'bold',
+                transition: 'all 0.2s', cursor: 'pointer',
+                backgroundColor: theme === 'light' ? '#fff4f4' : 'var(--bg-card-hover)',
+                border: theme === 'light' ? '2px solid #ff6b6b' : '1px solid var(--border)',
+                color: theme === 'light' ? '#ff6b6b' : 'var(--text-muted)',
               }}
             >
               ☀️ 라이트 모드
             </button>
-            <button 
+            <button
               onClick={() => setTheme('dark')}
               style={{
-                flex: 1, height: '80px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '15px', fontWeight: 'bold', transition: 'all 0.2s', cursor: 'pointer',
-                backgroundColor: theme === 'dark' ? '#333' : '#f8f9fa',
-                border: theme === 'dark' ? '2px solid #333' : '1px solid #eee',
-                color: theme === 'dark' ? '#fff' : '#888'
+                flex: 1, height: '80px', borderRadius: '12px', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '8px', fontSize: '15px', fontWeight: 'bold',
+                transition: 'all 0.2s', cursor: 'pointer',
+                backgroundColor: theme === 'dark' ? '#3f3f46' : 'var(--bg-card-hover)',
+                border: theme === 'dark' ? '2px solid #a1a1aa' : '1px solid var(--border)',
+                color: theme === 'dark' ? '#f4f4f5' : 'var(--text-muted)',
               }}
             >
-              🌙 다크 모드 (준비 중)
+              🌙 다크 모드
             </button>
           </div>
         </div>
 
-        {/* 3. AI 추천 스타일 설정 영역 */}
-        <div style={{
-          backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '16px',
-          padding: '24px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-        }}>
+        {/* ── AI 추천 스타일 (게스트/로그인 모두) ── */}
+        <div style={cardStyle}>
           <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '18px', color: '#222', margin: '0 0 6px 0' }}>🤖 AI 추천 스타일 설정</h3>
-            <p style={{ margin: 0, fontSize: '13px', color: '#888' }}>선택하신 스타일은 AI 셰프가 레시피를 추천할 때 최우선으로 반영됩니다.</p>
+            <h3 style={{ fontSize: '18px', color: 'var(--text-heading)', margin: '0 0 6px 0' }}>🤖 AI 추천 스타일 설정</h3>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>선택하신 스타일은 AI 셰프가 레시피를 추천할 때 최우선으로 반영됩니다.</p>
           </div>
-          
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
             {aiStyleOptions.map((style, idx) => {
               const isActive = aiStyles.includes(style);
@@ -361,10 +368,11 @@ function SettingsPage({ user, onLogout, onUpdateUser, onDeleteUser }) {
                   key={idx}
                   onClick={() => toggleStyle(style)}
                   style={{
-                    padding: '10px 20px', borderRadius: '20px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s',
+                    padding: '10px 20px', borderRadius: '20px', fontSize: '14px', fontWeight: 'bold',
+                    cursor: 'pointer', transition: 'all 0.2s',
                     backgroundColor: isActive ? '#ff6b6b' : '#f8f9fa',
                     border: isActive ? '1px solid #ff6b6b' : '1px solid #ddd',
-                    color: isActive ? '#fff' : '#555'
+                    color: isActive ? '#fff' : '#555',
                   }}
                 >
                   {isActive ? '✓ ' : '+ '}{style}
@@ -375,6 +383,65 @@ function SettingsPage({ user, onLogout, onUpdateUser, onDeleteUser }) {
         </div>
 
       </div>
+
+      {/* ── 회원탈퇴 확인 모달 ── */}
+      {showDeleteModal && (
+        <div style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+        }}>
+          <div style={{
+            backgroundColor: '#fff', borderRadius: '20px', padding: '32px 28px',
+            width: '100%', maxWidth: '380px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+            boxSizing: 'border-box',
+          }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#222' }}>정말 탈퇴하시겠습니까?</h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#888', lineHeight: '1.6' }}>
+              탈퇴 시 모든 대화 기록과 냉장고 재료가 영구 삭제됩니다.<br />
+              계속하려면 비밀번호를 입력해주세요.
+            </p>
+            <input
+              type="password"
+              placeholder="비밀번호 입력"
+              value={deletePassword}
+              onChange={e => setDeletePassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleDeleteAccount()}
+              autoFocus
+              style={{
+                width: '100%', height: '44px', padding: '0 16px', borderRadius: '10px',
+                border: '1px solid #ddd', fontSize: '14px', outline: 'none',
+                boxSizing: 'border-box', marginBottom: '16px', caretColor: '#ff6b6b',
+              }}
+              onFocus={e => e.target.style.borderColor = '#ff6b6b'}
+              onBlur={e => e.target.style.borderColor = '#ddd'}
+            />
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                style={{
+                  flex: 1, height: '44px', borderRadius: '10px', border: '1px solid #ddd',
+                  backgroundColor: '#fff', color: '#555', fontSize: '14px', fontWeight: 'bold',
+                  cursor: 'pointer',
+                }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={isDeleting}
+                style={{
+                  flex: 1, height: '44px', borderRadius: '10px', border: 'none',
+                  backgroundColor: isDeleting ? '#ffb3b3' : '#ff4757', color: '#fff',
+                  fontSize: '14px', fontWeight: 'bold', cursor: isDeleting ? 'default' : 'pointer',
+                }}
+              >
+                {isDeleting ? '처리 중...' : '탈퇴하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
