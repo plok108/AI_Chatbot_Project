@@ -1,8 +1,8 @@
 // src/components/Sidebar.jsx
 import React from 'react';
 
-// userNickname 프롭으로 외부에서 닉네임을 전달받습니다.
-function Sidebar({ currentPage, setCurrentPage, startNewConversation, userNickname, user, onLogout }) {
+// userNickname 프롭을 추가하여 외부에서 닉네임을 전달받을 수 있게 합니다.
+function Sidebar({ currentPage, setCurrentPage, startNewConversation, userNickname }) {
   const menuItems = [
     { icon: '🏠', label: '홈', id: 'home' },
     { icon: '➕', label: '새로운 대화', primary: true, id: 'new' }, 
@@ -13,23 +13,23 @@ function Sidebar({ currentPage, setCurrentPage, startNewConversation, userNickna
 
   return (
     <aside style={{
-      width: '20vw',          
-      minWidth: '220px',      
-      maxWidth: '280px',      
-      height: '100%',         
-      minHeight: '100vh',     
-      backgroundColor: '#ffffff',
-      borderRight: '1px solid #f0f0f0',
+      width: '20vw',
+      minWidth: '220px',
+      maxWidth: '280px',
+      height: '100%',
+      minHeight: '100vh',
+      backgroundColor: 'var(--bg-sidebar)',
+      borderRight: '1px solid var(--border-strong)',
       display: 'flex',
       flexDirection: 'column',
       padding: '20px',
       boxSizing: 'border-box',
-      flexShrink: 0
+      flexShrink: 0,
     }}>
       {/* 서비스 로고 */}
       <div style={{ marginBottom: '35px', padding: '0 10px' }}>
         <h2 style={{ color: '#ff6b6b', fontSize: '24px', margin: 0, letterSpacing: '-1px', fontWeight: 'bold' }}>🍳 AI 챗봇 냉털이</h2>
-        <div style={{ fontSize: '12px', color: '#bbb', marginTop: '4px', fontWeight: '500' }}>개인 상황을 이해하는 스마트 요리 어시스턴트</div>
+        <div style={{ fontSize: '12px', color: 'var(--text-faint)', marginTop: '4px', fontWeight: '500' }}>개인 상황을 이해하는 스마트 요리 어시스턴트</div>
       </div>
 
       {/* 메뉴 리스트 */}
@@ -57,12 +57,12 @@ function Sidebar({ currentPage, setCurrentPage, startNewConversation, userNickna
                 marginBottom: '4px',
                 cursor: isActive ? 'default' : 'pointer',
                 pointerEvents: isActive ? 'none' : 'auto', 
-                backgroundColor: isActive ? '#ff6b6b' : 'transparent', 
-                color: isActive ? '#fff' : (item.primary ? '#ff6b6b' : '#444'), 
+                backgroundColor: isActive ? '#ff6b6b' : 'transparent',
+                color: isActive ? '#fff' : (item.primary ? '#ff6b6b' : 'var(--text-sidebar)'),
                 fontWeight: isActive || item.primary ? 'bold' : '500',
               }}
               onMouseOver={(e) => {
-                if (!isActive) e.currentTarget.style.backgroundColor = '#f8f9fa';
+                if (!isActive) e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)';
               }}
               onMouseOut={(e) => {
                 if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
@@ -75,27 +75,18 @@ function Sidebar({ currentPage, setCurrentPage, startNewConversation, userNickna
         })}
       </div>
 
-      {/* 유저 프로필 카드 */}
-      <button
-        type="button"
-        onClick={() => !user && setCurrentPage('login')}
-        style={{ 
-          width: '100%',
-          textAlign: 'left',
-          padding: '14px 16px', 
-          backgroundColor: '#f8f9fa', 
-          border: '1px solid #eee',
-          borderRadius: '16px',
-          marginTop: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-          cursor: !user ? 'pointer' : 'default',
-          outline: 'none',
-          borderColor: !user ? '#eee' : '#eee'
-        }}
-      >
+      {/* 하단: 유저 프로필 카드 */}
+      <div style={{ 
+        padding: '14px 16px', 
+        backgroundColor: 'var(--bg-profile)',
+        border: '1px solid var(--border)',
+        borderRadius: '16px',
+        marginTop: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+      }}>
         {/* 프로필 아바타 아이콘 */}
         <div style={{ 
           width: '38px', 
@@ -116,36 +107,15 @@ function Sidebar({ currentPage, setCurrentPage, startNewConversation, userNickna
           <span style={{ 
             fontSize: '14px', 
             fontWeight: 'bold', 
-            color: '#222',
+            color: 'var(--text-heading)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis'
           }}>
-            {user ? `${userNickname} 님` : '게스트'}
-          </span>
-          <span style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
-            {user ? '로그인 상태입니다.' : '게스트입니다. 클릭하면 로그인 페이지로 이동합니다.'}
+            {userNickname || '테스트유저'} 님
           </span>
         </div>
-      </button>
-      {user && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
-          <button
-            type="button"
-            onClick={onLogout}
-            style={{
-              width: '100%',
-              borderRadius: '14px',
-              backgroundColor: '#ff6b6b',
-              color: '#fff',
-              border: 'none',
-              padding: '12px 16px',
-              fontWeight: 'bold',
-              cursor: 'pointer'
-            }}
-          >로그아웃</button>
-        </div>
-      )}
+      </div>
 
     </aside>
   );
