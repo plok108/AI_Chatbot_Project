@@ -1,207 +1,182 @@
+// src/pages/LoginPage.jsx
 import React, { useState } from 'react';
+import { API_BASE, setToken } from '../api';
 
-function LoginPage({ onLogin, onContinueAsGuest }) {
-  const [authMode, setAuthMode] = useState('login');
+function LoginPage({ onLogin, onGuest }) {
+  const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
-  const [statusMessage, setStatusMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setStatusMessage('');
-    setIsSubmitting(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (isLoginMode) {
+      if (!email || !password) return alert("이메일과 비밀번호를 입력해주세요.");
+    } else {
+      if (!email || !password || !nickname) return alert("모든 항목을 입력해주세요.");
+    }
 
-    const endpoint = authMode === 'login' ? 'login' : 'register';
-    const body = authMode === 'login'
-      ? { email, password }
-      : { email, password, nickname };
-
+    setIsLoading(true);
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/auth/${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.detail || `${authMode === 'login' ? '로그인' : '회원가입'}에 실패했습니다.`);
+      if (isLoginMode) {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert(err.detail || "로그인에 실패했습니다.");
+          return;
+        }
+        const data = await res.json();
+        setToken(data.access_token);
+        onLogin(data.nickname, data.id, data.email);
+      } else {
+        const res = await fetch(`${API_BASE}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, nickname }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert(err.detail || "회원가입에 실패했습니다.");
+          return;
+        }
+        const data = await res.json();
+        setToken(data.access_token);
+        alert(`${data.nickname}님, 가입을 환영합니다!`);
+        onLogin(data.nickname, data.id, data.email);
       }
-
-      const data = await response.json();
-      onLogin({ email: data.email, nickname: data.nickname });
-    } catch (error) {
-      setStatusMessage(
-        error.message || '요청에 실패했습니다. 백엔드가 실행 중인지 확인하거나 입력 정보를 다시 확인해 주세요.'
-      );
+    } catch {
+      alert("서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.");
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  const handleGuest = () => {
-    setStatusMessage('게스트로 계속합니다. 로그인 없이도 서비스를 사용할 수 있습니다.');
-    onContinueAsGuest();
+  const inputStyle = {
+    width: '100%',
+    padding: '12px 14px',
+    marginBottom: '10px',
+    border: '1px solid #ddd',
+    borderRadius: '10px',
+    fontSize: '14px',
+    outline: 'none',
+    boxSizing: 'border-box',
+    backgroundColor: '#f9f9f9',
+    transition: 'border-color 0.2s',
+    color: '#333',
+    caretColor: '#ff6b6b'
   };
 
   return (
-    <div style={{
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: '#f6f3ee',
-      padding: '20px',
-      boxSizing: 'border-box'
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '520px',
-        backgroundColor: '#fff',
-        borderRadius: '24px',
-        boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
-        padding: '36px',
-      }}>
-        <h2 style={{ margin: 0, fontSize: '28px', color: '#222' }}>{authMode === 'login' ? '로그인' : '회원가입'}</h2>
-        <p style={{ margin: '12px 0 28px', color: '#666', fontSize: '15px', lineHeight: '1.6' }}>
-          {authMode === 'login'
-            ? '이 서비스는 로그인 없이도 사용할 수 있습니다. 로그인하면 닉네임이 저장되고, 개인화된 경험을 더 쉽게 관리할 수 있어요.'
-            : '새 계정을 만들어 보세요. 로그인 후 닉네임과 설정이 저장됩니다.'}
-        </p>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100vw', height: '100vh', backgroundColor: '#f6f3ee' }}>
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', color: '#555', fontSize: '14px' }}>이메일</label>
+      <div style={{ backgroundColor: '#fff', width: '100%', maxWidth: '360px', borderRadius: '20px', padding: '32px 24px', boxSizing: 'border-box', boxShadow: '0 8px 30px rgba(0,0,0,0.04)', textAlign: 'center' }}>
+
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ fontSize: '36px', marginBottom: '8px' }}>🍳</div>
+          <h1 style={{ margin: '0 0 6px 0', fontSize: '20px', color: '#333', letterSpacing: '-0.5px' }}>상황 인식 기반 AI 식사 추천</h1>
+          <h2 style={{ margin: 0, fontSize: '24px', color: '#ff6b6b', fontWeight: 'bold' }}>냉털이</h2>
+        </div>
+
+        <div style={{ display: 'flex', marginBottom: '20px', backgroundColor: '#f1f3f5', borderRadius: '10px', padding: '4px', boxSizing: 'border-box' }}>
+          <button
+            onClick={() => setIsLoginMode(true)}
+            style={{
+              flex: 1, height: '38px', display: 'flex', justifyContent: 'center', alignItems: 'center',
+              margin: 0, fontSize: '14px', fontWeight: 'bold', borderRadius: '8px', cursor: 'pointer',
+              transition: 'all 0.2s', border: 'none',
+              backgroundColor: isLoginMode ? '#fff' : 'transparent',
+              color: isLoginMode ? '#333' : '#888',
+              boxShadow: isLoginMode ? '0 2px 6px rgba(0,0,0,0.05)' : 'none'
+            }}
+          >
+            로그인
+          </button>
+          <button
+            onClick={() => setIsLoginMode(false)}
+            style={{
+              flex: 1, height: '38px', display: 'flex', justifyContent: 'center', alignItems: 'center',
+              margin: 0, fontSize: '14px', fontWeight: 'bold', borderRadius: '8px', cursor: 'pointer',
+              transition: 'all 0.2s', border: 'none',
+              backgroundColor: !isLoginMode ? '#fff' : 'transparent',
+              color: !isLoginMode ? '#333' : '#888',
+              boxShadow: !isLoginMode ? '0 2px 6px rgba(0,0,0,0.05)' : 'none'
+            }}
+          >
+            회원가입
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ textAlign: 'left' }}>
+          <input
+            type="email"
+            placeholder="이메일"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            style={inputStyle}
+            onFocus={e => e.target.style.borderColor = '#ff6b6b'}
+            onBlur={e => e.target.style.borderColor = '#ddd'}
+          />
+          <input
+            type="password"
+            placeholder="비밀번호 (8자 이상)"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            style={inputStyle}
+            onFocus={e => e.target.style.borderColor = '#ff6b6b'}
+            onBlur={e => e.target.style.borderColor = '#ddd'}
+          />
+          {!isLoginMode && (
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="email@example.com"
-              required
-              style={{
-                width: '100%',
-                height: '48px',
-                borderRadius: '14px',
-                border: '1px solid #ddd',
-                padding: '0 16px',
-                fontSize: '15px',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
+              type="text"
+              placeholder="닉네임 (2~30자)"
+              value={nickname}
+              onChange={e => setNickname(e.target.value)}
+              style={inputStyle}
+              onFocus={e => e.target.style.borderColor = '#ff6b6b'}
+              onBlur={e => e.target.style.borderColor = '#ddd'}
             />
-          </div>
-
-          <div style={{ marginBottom: authMode === 'signup' ? '18px' : '22px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', color: '#555', fontSize: '14px' }}>비밀번호</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="비밀번호를 입력하세요"
-              required
-              style={{
-                width: '100%',
-                height: '48px',
-                borderRadius: '14px',
-                border: '1px solid #ddd',
-                padding: '0 16px',
-                fontSize: '15px',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
-
-          {authMode === 'signup' && (
-            <div style={{ marginBottom: '22px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#555', fontSize: '14px' }}>닉네임</label>
-              <input
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="사용할 닉네임"
-                required
-                style={{
-                  width: '100%',
-                  height: '48px',
-                  borderRadius: '14px',
-                  border: '1px solid #ddd',
-                  padding: '0 16px',
-                  fontSize: '15px',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-          )}
-
-          {statusMessage && (
-            <div style={{ marginBottom: '20px', color: '#d64545', fontSize: '14px', lineHeight: '1.5' }}>
-              {statusMessage}
-            </div>
           )}
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isLoading}
             style={{
-              width: '100%',
-              height: '50px',
-              borderRadius: '16px',
-              border: 'none',
-              backgroundColor: '#ff6b6b',
-              color: '#fff',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              marginBottom: '14px'
+              width: '100%', padding: '12px 0',
+              backgroundColor: isLoading ? '#ffb3b3' : '#ff6b6b',
+              color: '#fff', border: 'none', borderRadius: '10px',
+              fontSize: '15px', fontWeight: 'bold', marginTop: '8px',
+              cursor: isLoading ? 'default' : 'pointer', transition: 'background-color 0.2s'
             }}
+            onMouseOver={e => { if (!isLoading) e.currentTarget.style.backgroundColor = '#fa5252'; }}
+            onMouseOut={e => { if (!isLoading) e.currentTarget.style.backgroundColor = '#ff6b6b'; }}
           >
-            {isSubmitting ? (authMode === 'login' ? '로그인 중...' : '회원가입 중...') : (authMode === 'login' ? '로그인' : '회원가입')}
+            {isLoading ? '처리 중...' : (isLoginMode ? '로그인' : '회원가입')}
           </button>
         </form>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', gap: '10px' }}>
+        <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
           <button
-            onClick={handleGuest}
+            onClick={onGuest}
             style={{
-              flex: 1,
-              height: '50px',
-              borderRadius: '16px',
-              border: '1px solid #ddd',
-              backgroundColor: '#fff',
-              color: '#555',
-              fontSize: '15px',
-              cursor: 'pointer'
+              width: '100%', padding: '12px 0', backgroundColor: '#fff', color: '#555',
+              border: '1px solid #ddd', borderRadius: '10px', fontSize: '14px', fontWeight: 'bold',
+              cursor: 'pointer', transition: 'all 0.2s'
             }}
+            onMouseOver={e => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+            onMouseOut={e => e.currentTarget.style.backgroundColor = '#fff'}
           >
-            로그인 없이 계속하기
+            👀 비회원으로 둘러보기
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAuthMode(authMode === 'login' ? 'signup' : 'login');
-              setStatusMessage('');
-            }}
-            style={{
-              flex: 1,
-              height: '50px',
-              borderRadius: '16px',
-              border: '1px solid #ff6b6b',
-              backgroundColor: authMode === 'login' ? '#fff' : '#ff6b6b',
-              color: authMode === 'login' ? '#ff6b6b' : '#fff',
-              fontSize: '15px',
-              cursor: 'pointer'
-            }}
-          >
-            {authMode === 'login' ? '회원가입으로 이동' : '로그인으로 이동'}
-          </button>
+          <p style={{ margin: '10px 0 0 0', fontSize: '11px', color: '#aaa', wordBreak: 'keep-all', lineHeight: '1.4' }}>
+            비회원으로 접속 시 추천 기록 및 냉장고 재료가 저장되지 않습니다.
+          </p>
         </div>
+
       </div>
     </div>
   );
