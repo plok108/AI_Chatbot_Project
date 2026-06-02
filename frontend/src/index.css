@@ -50,6 +50,51 @@
   }
 }
 
+/* ── 앱 테마 CSS 변수 ── */
+[data-theme="light"], :root {
+  --bg-page:        #f6f3ee;
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #f1f3f5;
+  --bg-input:       #f9f9f9;
+  --bg-ai-bubble:   #f8f9fa;
+  --bg-sidebar:     #ffffff;
+  --bg-profile:     #f8f9fa;
+  --bg-chat:        #ffffff;
+  --border:         #eee;
+  --border-strong:  #f0f0f0;
+  --border-input:   #ddd;
+  --text-heading:   #111;
+  --text-primary:   #333;
+  --text-secondary: #555;
+  --text-muted:     #888;
+  --text-faint:     #bbb;
+  --text-sidebar:   #444;
+  --shadow-sm:      rgba(0,0,0,0.05);
+  --shadow-md:      rgba(0,0,0,0.08);
+}
+
+[data-theme="dark"] {
+  --bg-page:        #18181b;
+  --bg-card:        #27272a;
+  --bg-card-hover:  #3f3f46;
+  --bg-input:       #2d2d30;
+  --bg-ai-bubble:   #2d2d30;
+  --bg-sidebar:     #1c1c1f;
+  --bg-profile:     #2d2d30;
+  --bg-chat:        #1c1c1f;
+  --border:         #3f3f46;
+  --border-strong:  #2a2a2d;
+  --border-input:   #52525b;
+  --text-heading:   #f4f4f5;
+  --text-primary:   #e4e4e7;
+  --text-secondary: #a1a1aa;
+  --text-muted:     #71717a;
+  --text-faint:     #52525b;
+  --text-sidebar:   #d4d4d8;
+  --shadow-sm:      rgba(0,0,0,0.25);
+  --shadow-md:      rgba(0,0,0,0.4);
+}
+
 /* 🌟 html과 body의 높이를 브라우저에 꽉 맞게 설정합니다 */
 html,
 body {
