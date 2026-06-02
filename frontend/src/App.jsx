@@ -1,42 +1,80 @@
 // src/App.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { API_BASE, authHeaders, clearToken } from "./api";
 import "./App.css";
-import Sidebar from "./components/Sidebar"; 
-import ChatPage from "./components/ChatPage"; 
-import HistoryPage from "./pages/HistoryPage"; 
-import FridgePage from "./pages/FridgePage"; 
+import Sidebar from "./components/Sidebar";
+import ChatPage from "./components/ChatPage";
+import HistoryPage from "./pages/HistoryPage";
+import FridgePage from "./pages/FridgePage";
 import SettingsPage from "./pages/SettingsPage";
 import LoginPage from "./pages/LoginPage";
 
 function App() {
-  // 처음 접속 시에는 'home'으로 시작
-  const [currentPage, setCurrentPage] = useState("home");
-  
-  // ChatPage 리셋을 위한 고유 키
+  const [currentPage, setCurrentPage] = useState("intro");
+  const [isGuest, setIsGuest] = useState(false);
   const [chatKey, setChatKey] = useState(Date.now());
-  
-  // 로그인된 사용자 정보
-  const [user, setUser] = useState(null);
-
   const [historyItems, setHistoryItems] = useState([]);
-
-  // ChatPage의 메시지 상태를 상위 컴포넌트에서 관리합니다.
+  const [nickname, setNickname] = useState("");
+  const [userId, setUserId] = useState(null);
+  const [userEmail, setUserEmail] = useState("");
   const [chatMessages, setChatMessages] = useState([]);
 
-  // --- 기존의 API 연동용 상태들 (유지) ---
-  const [ingredients, setIngredients] = useState("");
-  const [situation, setSituation] = useState("");
-  const [mood, setMood] = useState("");
-  const [userMessage, setUserMessage] = useState("");
-  const [result, setResult] = useState("");
-  const [savedId, setSavedId] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [dislikedFoods, setDislikedFoods] = useState([]);
+  const [theme, setTheme] = useState('light');
 
-  // '새로운 대화' 시작 로직
+  // 로그인 시 DB에서 기피음식 불러오기 (user_id는 토큰에서 추출)
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`${API_BASE}/api/preferences/disliked`, { headers: authHeaders() })
+      .then(r => r.json())
+      .then(data => setDislikedFoods(data.foods || []))
+      .catch(() => {});
+  }, [userId]);
+
+  // 로그인 — 게스트 세션이었을 때만 로컬 기록 초기화
+  const handleLogin = (userName, id = null, email = "") => {
+    setNickname(userName);
+    setUserId(id);
+    setUserEmail(email);
+    setIsGuest(false);
+    setDislikedFoods([]);   // useEffect가 userId 변경을 감지해 DB에서 불러옴
+    if (isGuest) {
+      // 게스트 세션 데이터만 초기화, 로그인 계정 DB 기록은 HistoryPage가 불러옴
+      setHistoryItems([]);
+      setChatMessages([]);
+    }
+    setChatKey(Date.now());
+    setCurrentPage("home");
+  };
+
+  const handleGuestLogin = () => {
+    setNickname("게스트");
+    setUserId(null);
+    setUserEmail("");
+    setIsGuest(true);
+    setCurrentPage("home");
+  };
+
+  const handleLogout = () => {
+    clearToken();
+    setNickname("");
+    setUserId(null);
+    setUserEmail("");
+    setIsGuest(false);
+    setDislikedFoods([]);
+    setChatMessages([]);
+    setHistoryItems([]);
+    setChatKey(Date.now());
+    setCurrentPage("intro");
+  };
+
+  // 게스트가 설정에서 로그인/회원가입 버튼을 눌렀을 때
+  const handleGoToLogin = () => {
+    setCurrentPage("intro");
+  };
+
   const startNewConversation = () => {
-    // 대화 내역이 있으면 히스토리 항목으로 저장합니다.
     if (chatMessages.length > 0) {
-      // 첫 번째 사용자 질문을 카드 제목에 사용합니다.
       const firstUserMsg = chatMessages.find(m => m.sender === 'user')?.text || "";
       const truncatedTitle = firstUserMsg.length > 15 ? firstUserMsg.slice(0, 15) + "..." : firstUserMsg;
 
@@ -46,75 +84,60 @@ function App() {
         title: truncatedTitle || "AI 추천 요리",
         meta: "추천 완료",
         tags: "#기록됨 #자취요리",
-        messages: chatMessages // 대화 메시지 전체를 기록에 포함합니다.
+        messages: chatMessages,
       };
       setHistoryItems([newRecord, ...historyItems]);
     }
 
-    // 상태 초기화
-    setIngredients("");
-    setSituation("");
-    setMood("");
-    setUserMessage("");
-    setResult("");
-    setSavedId(null);
-    
-    // 대화 상태를 초기화합니다.
     setChatMessages([]);
-
-    // 새로운 대화 클릭 시 상태를 'new'로 변경 (사이드바 하이라이트용)
-    setChatKey(Date.now()); 
-    setCurrentPage("new"); 
+    setChatKey(Date.now());
+    setCurrentPage("new");
   };
 
-  const handleLogin = (userData) => {
-    setUser(userData);
-    setCurrentPage("home");
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    setCurrentPage("login");
-  };
+  if (currentPage === "intro") {
+    return <LoginPage onLogin={handleLogin} onGuest={handleGuestLogin} />;
+  }
 
   return (
-    <div style={{ display: 'flex', width: '100vw', height: '100vh', backgroundColor: '#f6f3ee', overflow: 'hidden' }}>
-      
-      {/* 사이드바 컴포넌트에 userNickname 프롭으로 nickname 상태를 넘겨줍니다 */}
-      <Sidebar 
-        currentPage={currentPage} 
-        setCurrentPage={setCurrentPage} 
-        startNewConversation={startNewConversation} 
-        userNickname={user?.nickname || '게스트'} 
-        user={user}
-        onLogout={handleLogout}
+    <div data-theme={theme} style={{ display: 'flex', width: '100vw', height: '100vh', backgroundColor: 'var(--bg-page)', overflow: 'hidden' }}>
+
+      <Sidebar
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        startNewConversation={startNewConversation}
+        userNickname={nickname}
       />
 
       <main style={{ flex: 1, height: '100%', position: 'relative', overflow: 'hidden' }}>
-        
-        {(currentPage === 'login' || (currentPage === 'settings' && !user)) ? (
-          <LoginPage
-            onLogin={handleLogin}
-            onContinueAsGuest={() => setCurrentPage('home')}
-          />
-        ) : (
-          <>
-            {/* 'home' 또는 'new' 상태일 때 ChatPage를 보여줌 */}
-            {(currentPage === "home" || currentPage === "new") && (
-              <ChatPage 
-                key={chatKey} 
-                // ChatPage에서 첫 메시지 전송 시 홈으로 전환합니다.
-                onFirstMessage={() => setCurrentPage("home")} 
-                // ChatPage에 메시지 상태와 상태 업데이트 함수를 전달합니다.
-                messages={chatMessages}
-                setMessages={setChatMessages}
-              />
-            )}
 
-            {currentPage === "history" && <HistoryPage historyItems={historyItems} />}
-            {currentPage === "fridge" && <FridgePage />}
-            {currentPage === "settings" && <SettingsPage user={user} onLogout={handleLogout} onUpdateUser={(updatedUser) => setUser(updatedUser)} onDeleteUser={() => { setUser(null); setCurrentPage('login'); }} />}
-          </>
+        {(currentPage === "home" || currentPage === "new") && (
+          <ChatPage
+            key={chatKey}
+            onFirstMessage={() => setCurrentPage("home")}
+            messages={chatMessages}
+            setMessages={setChatMessages}
+            userId={userId}
+            dislikedFoods={dislikedFoods}
+          />
+        )}
+
+        {currentPage === "history" && (
+          <HistoryPage historyItems={historyItems} userId={userId} />
+        )}
+        {currentPage === "fridge" && <FridgePage userId={userId} />}
+        {currentPage === "settings" && (
+          <SettingsPage
+            userEmail={userEmail}
+            userNickname={nickname}
+            userId={userId}
+            isGuest={isGuest}
+            onLogout={handleLogout}
+            onGoToLogin={handleGoToLogin}
+            dislikedFoods={dislikedFoods}
+            setDislikedFoods={setDislikedFoods}
+            theme={theme}
+            setTheme={setTheme}
+          />
         )}
 
       </main>
