@@ -5,33 +5,48 @@ from typing import Optional
 
 from app.database import create_user, delete_user_by_email, get_user_by_email
 
+# 반복 횟수를 해시 문자열에 함께 저장하여, 기존 해시를 깨지 않고도
+# 향후 비용을 조정할 수 있도록 한다.
+_PBKDF2_ITERATIONS = 200_000
+
+
+def _pbkdf2(password: str, salt: str, iterations: int) -> str:
+    key = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        iterations,
+        dklen=32,
+    )
+    return key.hex()
+
 
 def generate_password_hash(password: str) -> str:
     salt = secrets.token_hex(16)
-    key = hashlib.pbkdf2_hmac(
-        "sha256",
-        password.encode("utf-8"),
-        salt.encode("utf-8"),
-        200_000,
-        dklen=32,
-    )
-    return f"{salt}${key.hex()}"
+    digest = _pbkdf2(password, salt, _PBKDF2_ITERATIONS)
+    # 자기서술적 포맷: 알고리즘$반복횟수$salt$digest
+    return f"pbkdf2_sha256${_PBKDF2_ITERATIONS}${salt}${digest}"
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    try:
-        salt, stored_hash = password_hash.split("$", 1)
-    except ValueError:
+    parts = password_hash.split("$")
+
+    if len(parts) == 4:
+        # 신규 포맷: pbkdf2_sha256$iterations$salt$digest
+        _, iter_str, salt, stored_hash = parts
+        try:
+            iterations = int(iter_str)
+        except ValueError:
+            return False
+    elif len(parts) == 2:
+        # 구버전 포맷(salt$digest)은 항상 200,000회로 생성됨
+        salt, stored_hash = parts
+        iterations = 200_000
+    else:
         return False
 
-    key = hashlib.pbkdf2_hmac(
-        "sha256",
-        password.encode("utf-8"),
-        salt.encode("utf-8"),
-        200_000,
-        dklen=32,
-    )
-    return hmac.compare_digest(stored_hash, key.hex())
+    digest = _pbkdf2(password, salt, iterations)
+    return hmac.compare_digest(stored_hash, digest)
 
 
 def register_user(email: str, password: str, nickname: str) -> int:
