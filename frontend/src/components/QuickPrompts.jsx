@@ -16,7 +16,7 @@ function QuickPrompts({ onSelect }) {
       </h3>
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(4, 1fr)', /* 🌟 다시 4칸으로 꽉 차게 변경했습니다 */
+        gridTemplateColumns: 'repeat(4, 1fr)',
         gap: '12px'
       }}>
         {promptCards.map((card, idx) => (

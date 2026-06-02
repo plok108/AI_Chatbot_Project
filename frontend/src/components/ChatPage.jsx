@@ -403,34 +403,40 @@ function ChatPage({ onFirstMessage, messages, setMessages, userId, dislikedFoods
         borderTop: '1px solid var(--border)', flexShrink: 0,
       }}>
         <div style={{ width: '100%', maxWidth: '800px' }}>
-          {/* 날씨 선택 (시간은 디바이스에서 자동 인식) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', flexWrap: 'wrap', fontSize: '12px' }}>
-            <span style={{ color: 'var(--text-muted)' }}>🌤️ 오늘 날씨</span>
-            {[['cold', '추움'], ['normal', '보통'], ['hot', '더움']].map(([val, label]) => (
+          {/* 날씨 선택 (시간은 디바이스에서 자동 인식) — 빠른메뉴처럼 가로로 나란히 */}
+          <div style={{ marginBottom: '10px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', marginLeft: '4px' }}>
+              🌤️ 오늘 날씨
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {[['cold', '추움'], ['normal', '보통'], ['hot', '더움']].map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setWeatherFeel(weatherFeel === val ? null : val)}
+                  style={{
+                    flex: 1, height: '40px', borderRadius: '12px', cursor: 'pointer',
+                    fontSize: '14px', fontWeight: 'bold', transition: 'all 0.2s',
+                    border: weatherFeel === val ? '1px solid #ff6b6b' : '1px solid var(--border-input)',
+                    backgroundColor: weatherFeel === val ? '#ff6b6b' : 'var(--bg-card)',
+                    color: weatherFeel === val ? '#fff' : 'var(--text-secondary)',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
               <button
-                key={val}
-                onClick={() => setWeatherFeel(weatherFeel === val ? null : val)}
+                onClick={() => setWeatherWet(w => !w)}
                 style={{
-                  padding: '4px 10px', borderRadius: '14px', cursor: 'pointer', fontSize: '12px',
-                  border: weatherFeel === val ? '1px solid #ff6b6b' : '1px solid var(--border-input)',
-                  backgroundColor: weatherFeel === val ? '#ff6b6b' : 'var(--bg-card)',
-                  color: weatherFeel === val ? '#fff' : 'var(--text-secondary)',
+                  flex: 1, height: '40px', borderRadius: '12px', cursor: 'pointer',
+                  fontSize: '14px', fontWeight: 'bold', transition: 'all 0.2s',
+                  border: weatherWet ? '1px solid #4dabf7' : '1px solid var(--border-input)',
+                  backgroundColor: weatherWet ? '#4dabf7' : 'var(--bg-card)',
+                  color: weatherWet ? '#fff' : 'var(--text-secondary)',
                 }}
               >
-                {label}
+                ☔ 비·눈
               </button>
-            ))}
-            <button
-              onClick={() => setWeatherWet(w => !w)}
-              style={{
-                padding: '4px 10px', borderRadius: '14px', cursor: 'pointer', fontSize: '12px',
-                border: weatherWet ? '1px solid #4dabf7' : '1px solid var(--border-input)',
-                backgroundColor: weatherWet ? '#4dabf7' : 'var(--bg-card)',
-                color: weatherWet ? '#fff' : 'var(--text-secondary)',
-              }}
-            >
-              ☔ 비·눈
-            </button>
+            </div>
           </div>
           <div style={{
             display: 'flex', backgroundColor: 'var(--bg-card)', borderRadius: '24px',
